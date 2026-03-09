@@ -1,5 +1,5 @@
 {
-  "name": "@draw-table/vue",
+  "name": "draw-table-vue",
   "version": "1.0.0",
   "description": "高性能 Vue 3 + TypeScript Canvas 表格组件，支持大数据量展示与深度定制交互",
   "type": "module",

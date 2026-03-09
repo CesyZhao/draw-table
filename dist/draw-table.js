@@ -796,6 +796,5 @@ const Tt = ["onClick", "onMouseenter"], Mt = { class: "header-cell-content" }, B
 export {
   $t as CanvasRenderer,
   Nt as CanvasTable,
-  It as TableHeader,
-  Nt as default
+  It as TableHeader
 };
