@@ -1,6 +1,6 @@
 {
   "name": "draw-table-vue",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "高性能 Vue 3 + TypeScript Canvas 表格组件，支持大数据量展示与深度定制交互",
   "type": "module",
   "main": "./dist/draw-table.umd.cjs",

@@ -1,4 +1,4 @@
-# @draw-table/vue
+# draw-table-vue
 
 高性能 Vue 3 + TypeScript Canvas 表格组件，支持大数据量展示与深度定制交互。
 
@@ -20,13 +20,13 @@
 
 ```bash
 # npm
-npm install @draw-table/vue
+npm install draw-table-vue
 
 # yarn
-yarn add @draw-table/vue
+yarn add draw-table-vue
 
 # pnpm
-pnpm add @draw-table/vue
+pnpm add draw-table-vue
 ```
 
 ## 🛠 快速开始
@@ -35,8 +35,8 @@ pnpm add @draw-table/vue
 
 ```ts
 import { createApp } from 'vue';
-import { CanvasTable } from '@draw-table/vue';
-import '@draw-table/vue/dist/style.css';
+import { CanvasTable } from 'draw-table-vue';
+import 'draw-table-vue/dist/style.css';
 
 const app = createApp(App);
 app.component('CanvasTable', CanvasTable);
@@ -47,8 +47,8 @@ app.mount('#app');
 
 ```vue
 <script setup lang="ts">
-import { CanvasTable } from '@draw-table/vue';
-import '@draw-table/vue/dist/style.css';
+import { CanvasTable } from 'draw-table-vue';
+import 'draw-table-vue/dist/style.css';
 import { ref } from 'vue';
 
 const columns = [
@@ -77,9 +77,9 @@ const data = ref([
 
 ```vue
 <script setup lang="ts">
-import { CanvasTable } from '@draw-table/vue';
+import { CanvasTable } from 'draw-table-vue';
 import { ref } from 'vue';
-import type { ColumnConfig } from '@draw-table/vue';
+import type { ColumnConfig } from 'draw-table-vue';
 
 const columns: ColumnConfig[] = [
   { key: 'id', title: 'ID', type: 'text', width: 80 },
@@ -216,9 +216,9 @@ const columns: ColumnConfig[] = [
 
 ```vue
 <script setup lang="ts">
-import { CanvasTable } from '@draw-table/vue';
+import { CanvasTable } from 'draw-table-vue';
 import { ref, h } from 'vue';
-import type { ColumnConfig, TableOptions, TableRow } from '@draw-table/vue';
+import type { ColumnConfig, TableOptions, TableRow } from 'draw-table-vue';
 
 const columns: ColumnConfig[] = [
   { type: 'selection', width: 50, fixed: 'left' },  // 选择列
@@ -256,9 +256,9 @@ const handleSelectChange = (selectedIds: (string | number)[]) => {
 
 ```vue
 <script setup lang="ts">
-import { CanvasTable } from '@draw-table/vue';
+import { CanvasTable } from 'draw-table-vue';
 import { ref, h } from 'vue';
-import type { ColumnConfig, TableOptions, TableRow } from '@draw-table/vue';
+import type { ColumnConfig, TableOptions, TableRow } from 'draw-table-vue';
 
 const columns: ColumnConfig[] = [
   { type: 'expand', width: 50, fixed: 'left' },  // 展开列
@@ -297,9 +297,9 @@ const options: TableOptions = {
 
 ```vue
 <script setup lang="ts">
-import { CanvasTable } from '@draw-table/vue';
+import { CanvasTable } from 'draw-table-vue';
 import { ref, h } from 'vue';
-import type { ColumnConfig } from '@draw-table/vue';
+import type { ColumnConfig } from 'draw-table-vue';
 
 const columns: ColumnConfig[] = [
   { key: 'id', title: 'ID', type: 'text', width: 80 },
@@ -355,9 +355,9 @@ const data = ref([
 
 ```vue
 <script setup lang="ts">
-import { CanvasTable } from '@draw-table/vue';
+import { CanvasTable } from 'draw-table-vue';
 import { ref } from 'vue';
-import type { ColumnConfig, TableOptions } from '@draw-table/vue';
+import type { ColumnConfig, TableOptions } from 'draw-table-vue';
 
 const columns: ColumnConfig[] = [
   { key: 'category', title: '分类', type: 'text', width: 120 },
@@ -412,9 +412,9 @@ const options: TableOptions = {
 
 ```vue
 <script setup lang="ts">
-import { CanvasTable } from '@draw-table/vue';
+import { CanvasTable } from 'draw-table-vue';
 import { ref } from 'vue';
-import type { ColumnConfig, SummaryFunction } from '@draw-table/vue';
+import type { ColumnConfig, SummaryFunction } from 'draw-table-vue';
 
 // 自定义汇总函数
 const sum: SummaryFunction = (data) => {
@@ -564,9 +564,9 @@ const columns: ColumnConfig[] = [
 
 ```vue
 <script setup lang="ts">
-import { CanvasTable } from '@draw-table/vue';
+import { CanvasTable } from 'draw-table-vue';
 import { ref } from 'vue';
-import type { TableOptions } from '@draw-table/vue';
+import type { TableOptions } from 'draw-table-vue';
 
 const options: TableOptions = {
   border: true,        // 显示边框
@@ -582,9 +582,9 @@ const options: TableOptions = {
 
 ```vue
 <script setup lang="ts">
-import { CanvasTable } from '@draw-table/vue';
+import { CanvasTable } from 'draw-table-vue';
 import { ref } from 'vue';
-import type { ColumnConfig } from '@draw-table/vue';
+import type { ColumnConfig } from 'draw-table-vue';
 
 const columns: ColumnConfig[] = [
   { type: 'selection', width: 50, fixed: 'left' },
