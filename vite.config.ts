@@ -23,6 +23,8 @@ export default defineConfig(({ mode }) => {
             globals: {
               vue: 'Vue',
             },
+            // 使用 named 导出方式，避免 default 和 named 导出混用问题
+            exports: 'named',
             // 分离 CSS 到单独文件
             assetFileNames: (assetInfo) => {
               if (assetInfo.name === 'style.css') {

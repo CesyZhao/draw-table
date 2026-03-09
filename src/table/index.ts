@@ -16,6 +16,3 @@ export type {
 } from './types';
 
 export { CanvasTable, TableHeader, CanvasRenderer };
-
-// 默认导出
-export default CanvasTable;

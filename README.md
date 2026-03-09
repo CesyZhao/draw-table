@@ -35,11 +35,11 @@ pnpm add @draw-table/vue
 
 ```ts
 import { createApp } from 'vue';
-import CanvasTable from '@draw-table/vue';
+import { CanvasTable } from '@draw-table/vue';
 import '@draw-table/vue/dist/style.css';
 
 const app = createApp(App);
-app.use(CanvasTable);
+app.component('CanvasTable', CanvasTable);
 app.mount('#app');
 ```
 
