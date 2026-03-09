@@ -1,15 +1,56 @@
 {
-  "name": "draw-table",
-  "private": true,
+  "name": "@draw-table/vue",
   "version": "0.1.0",
+  "description": "高性能 Vue 3 + TypeScript Canvas 表格组件，支持大数据量展示与深度定制交互",
   "type": "module",
+  "main": "./dist/draw-table.umd.cjs",
+  "module": "./dist/draw-table.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/draw-table.js",
+      "require": "./dist/draw-table.umd.cjs"
+    },
+    "./dist/style.css": "./dist/style.css"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "build:lib": "vite build --mode lib",
+    "preview": "vite preview",
+    "prepublishOnly": "npm run build:lib"
   },
-  "dependencies": {
-    "vue": "^3.5.25"
+  "keywords": [
+    "vue3",
+    "vue",
+    "canvas",
+    "table",
+    "datatable",
+    "grid",
+    "component",
+    "typescript",
+    "virtual-scroll",
+    "big-data",
+    "高性能表格"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "bugs": {
+    "url": ""
+  },
+  "homepage": "",
+  "peerDependencies": {
+    "vue": "^3.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
@@ -17,6 +58,7 @@
     "@vue/tsconfig": "^0.8.1",
     "typescript": "~5.9.3",
     "vite": "^7.3.1",
+    "vue": "^3.5.25",
     "vue-tsc": "^3.1.5"
   }
 }

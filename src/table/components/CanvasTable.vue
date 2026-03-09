@@ -1,5 +1,24 @@
 <template>
   <div class="canvas-table-container" ref="containerRef">
+    <!-- Header (DOM implementation) -->
+    <TableHeader
+      v-if="flattenedColumns.length > 0"
+      :columns="props.columns"
+      :flattenedColumns="flattenedColumns"
+      :columnLevels="columnLevels"
+      :headerHeight="props.options?.headerHeight || 48"
+      :scrollX="scrollX"
+      :fixedLeftWidth="fixedLeftWidth"
+      :hoverIndex="hoverHeaderIndex"
+      :selectedRows="selectedRows"
+      :data="props.data"
+      @header-hover="handleHeaderHover"
+      @header-leave="handleHeaderLeave"
+      @toggle-all="toggleAllSelection"
+      @header-menu="handleHeaderMenuClick"
+    />
+    
+    <!-- Body (Canvas implementation) -->
     <div 
       class="canvas-wrapper" 
       :style="wrapperStyle"
@@ -87,6 +106,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, computed, shallowRef, h, defineComponent } from 'vue';
 import { CanvasRenderer } from '../core/renderer';
+import TableHeader from './TableHeader.vue';
 import type { ColumnConfig, TableRow, TableOptions, CellInfo, MenuItem } from '../types';
 
 // Helper component to render VNodes
@@ -117,6 +137,12 @@ const viewWidth = ref(0);
 const viewHeight = ref(0);
 const scrollX = ref(0);
 const scrollY = ref(0);
+const fixedLeftWidth = ref(0);
+
+// Header state (for DOM header)
+const flattenedColumns = ref<ColumnConfig[]>([]);
+const columnLevels = ref(0);
+const hoverHeaderIndex = ref<number>(-1);
 
 // Interaction state
 const hoverCell = ref<CellInfo | null>(null);
@@ -139,7 +165,8 @@ const overlayStyle = computed(() => ({
   left: 0,
   pointerEvents: 'none' as const,
   width: '100%',
-  height: '100%'
+  height: '100%',
+  zIndex: 5
 }));
 
 const editBtnStyle = computed(() => {
@@ -180,13 +207,18 @@ const editDialogStyle = computed(() => {
 });
 
 const headerMenuStyle = computed(() => {
-  if (!headerMenu.value) return {};
+  if (!headerMenu.value || !canvasRef.value) return {};
   const { rect } = headerMenu.value;
+  
+  // 获取 canvas 相对于容器的位置
+  const canvasRect = canvasRef.value.getBoundingClientRect();
+  
   return {
-    position: 'absolute' as const,
-    left: `${rect.x + rect.width - 120}px`,
-    top: `${rect.y + rect.height}px`,
-    pointerEvents: 'auto' as const
+    position: 'fixed' as const,
+    left: `${canvasRect.left + rect.x + rect.width - 120}px`,
+    top: `${canvasRect.top + rect.y + rect.height}px`,
+    pointerEvents: 'auto' as const,
+    zIndex: 3000
   };
 });
 
@@ -226,36 +258,55 @@ const handleMenuCommand = (item: MenuItem) => {
   }
 };
 
+// Header event handlers
+const handleHeaderHover = (index: number) => {
+  hoverHeaderIndex.value = index;
+};
+
+const handleHeaderLeave = () => {
+  hoverHeaderIndex.value = -1;
+};
+
+const toggleAllSelection = () => {
+  const allSelected = selectedRows.value.size === props.data.length;
+  if (allSelected) {
+    selectedRows.value.clear();
+  } else {
+    props.data.forEach(r => selectedRows.value.add(r.id));
+  }
+  renderer.value?.setSelectedRows(Array.from(selectedRows.value));
+  emit('select-change', Array.from(selectedRows.value));
+};
+
+const handleHeaderMenuClick = (col: ColumnConfig, event: MouseEvent) => {
+  const rect = (event.target as HTMLElement).getBoundingClientRect();
+  headerMenu.value = { 
+    column: col, 
+    rect: { 
+      x: rect.left - (canvasRef.value?.getBoundingClientRect().left || 0),
+      y: rect.top - (canvasRef.value?.getBoundingClientRect().top || 0),
+      width: rect.width,
+      height: rect.height
+    }
+  };
+};
+
 const handleMouseMove = (e: MouseEvent) => {
   if (!canvasRef.value || !renderer.value) return;
   const rect = canvasRef.value.getBoundingClientRect();
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
   
-  // Handle header hover
-  const header = renderer.value.getHeaderAt(x, y);
-  if (header) {
-    const idx = props.columns.findIndex(c => c.key === header.column.key);
-    renderer.value.setHoverHeader(idx);
-    
-    // Set cursor style
-    if (header.isMenu || header.column.type === 'selection') {
+  hoverCell.value = renderer.value.getCellAt(x, y);
+  
+  if (hoverCell.value) {
+    if (hoverCell.value.isExpandBtn || hoverCell.value.isSelection) {
       canvasRef.value.style.cursor = 'pointer';
     } else {
       canvasRef.value.style.cursor = 'default';
     }
   } else {
-    renderer.value.setHoverHeader(-1);
     canvasRef.value.style.cursor = 'default';
-  }
-
-  hoverCell.value = renderer.value.getCellAt(x, y);
-  
-  // Update cursor if hovering over expand button or selection
-  if (hoverCell.value) {
-    if (hoverCell.value.isExpandBtn || hoverCell.value.isSelection) {
-      canvasRef.value.style.cursor = 'pointer';
-    }
   }
 };
 
@@ -265,25 +316,6 @@ const handleMouseDown = (e: MouseEvent) => {
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
   
-  // Check header click
-  const header = renderer.value.getHeaderAt(x, y);
-  if (header) {
-    if (header.isMenu) {
-      headerMenu.value = { column: header.column, rect: header.rect };
-    } else if (header.column.type === 'selection') {
-      // Toggle all selection
-      const allSelected = selectedRows.value.size === props.data.length;
-      if (allSelected) {
-        selectedRows.value.clear();
-      } else {
-        props.data.forEach(r => selectedRows.value.add(r.id));
-      }
-      renderer.value.setSelectedRows(Array.from(selectedRows.value));
-      emit('select-change', Array.from(selectedRows.value));
-    }
-    return;
-  }
-
   const cell = renderer.value.getCellAt(x, y);
   if (cell) {
     if (cell.isExpandBtn) {
@@ -394,17 +426,16 @@ const getExpandStyle = (rowId: string | number) => {
     height: `${h}px`,
     pointerEvents: 'auto' as const,
     overflow: 'hidden',
-    backgroundColor: '#fff',
+    backgroundColor: '#fdfdfd',
     borderBottom: '1px solid #ebeef5',
-    // Sync inner scrolling content
-    display: 'flex'
   };
 };
 
 const getExpandContentStyle = () => {
   return {
     marginLeft: `-${scrollX.value}px`,
-    minWidth: `${totalWidth.value - renderer.value?.getFixedLeftWidth()!}px`
+    minWidth: `${totalWidth.value - renderer.value?.getFixedLeftWidth()!}px`,
+    width: '100%'
   };
 };
 
@@ -462,6 +493,19 @@ const updateTotalSize = () => {
   if (!renderer.value) return;
   totalWidth.value = renderer.value.getTotalWidth();
   totalHeight.value = renderer.value.getTotalHeight();
+  fixedLeftWidth.value = renderer.value.getFixedLeftWidth();
+};
+
+// Flatten columns for header
+const flattenColumns = (cols: ColumnConfig[], level = 0) => {
+  columnLevels.value = Math.max(columnLevels.value, level + 1);
+  cols.forEach(col => {
+    if (col.children && col.children.length > 0) {
+      flattenColumns(col.children, level + 1);
+    } else {
+      flattenedColumns.value.push(col);
+    }
+  });
 };
 
 let resizeObserver: ResizeObserver | null = null;
@@ -474,6 +518,11 @@ onMounted(() => {
     renderer.value.setOptions(props.options || {});
     
     updateTotalSize();
+    
+    // Flatten columns for DOM header
+    flattenedColumns.value = [];
+    columnLevels.value = 0;
+    flattenColumns(props.columns);
     
     resizeObserver = new ResizeObserver(handleResize);
     if (containerRef.value) {
@@ -498,6 +547,9 @@ onUnmounted(() => {
 
 watch(() => props.columns, (cols) => {
   renderer.value?.setColumns(cols);
+  flattenedColumns.value = [];
+  columnLevels.value = 0;
+  flattenColumns(cols);
   updateTotalSize();
 }, { deep: true });
 
@@ -560,7 +612,11 @@ watch(() => props.options, (opts) => {
 }
 
 .table-overlays {
-  z-index: 5;
+  z-index: 10;
+}
+
+.expand-row-overlay {
+  z-index: 10;
 }
 
 .edit-btn {

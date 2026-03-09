@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, h } from 'vue';
+import { ref } from 'vue';
 import CanvasTable from './table/components/CanvasTable.vue';
 import type { ColumnConfig, TableRow, TableOptions } from './table/types';
 

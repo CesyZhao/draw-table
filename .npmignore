@@ -1,0 +1,48 @@
+# Source files
+src/
+public/
+index.html
+
+# Config files
+vite.config.ts
+tsconfig.json
+tsconfig.app.json
+tsconfig.node.json
+
+# Development
+.vscode/
+.qoder/
+
+# Git
+.git/
+.gitignore
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+
+# Lock files (keep only one)
+yarn.lock
+package-lock.json

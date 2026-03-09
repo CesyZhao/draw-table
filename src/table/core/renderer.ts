@@ -1,4 +1,4 @@
-import type { ColumnConfig, TableRow, TableOptions, CellType, CellInfo } from '../types';
+import type { ColumnConfig, TableRow, TableOptions, CellInfo } from '../types';
 
 export class CanvasRenderer {
   private ctx: CanvasRenderingContext2D;
@@ -31,7 +31,6 @@ export class CanvasRenderer {
   private expandedRowKeys = new Set<string | number>();
   private selectedRowKeys = new Set<string | number>();
   private imageCache: Map<string, HTMLImageElement> = new Map();
-  private hoverHeaderIndex: number = -1;
   private flattenedColumns: ColumnConfig[] = [];
   private columnLevels = 0;
 
@@ -126,7 +125,7 @@ export class CanvasRenderer {
     let currentX = 0;
     this.columnPositions = [0];
     let fixedWidth = 0;
-    this.flattenedColumns.forEach((col, i) => {
+    this.flattenedColumns.forEach((col) => {
       const w = col.width || 100;
       currentX += w;
       this.columnPositions.push(currentX);
@@ -153,20 +152,7 @@ export class CanvasRenderer {
     this.calculateSummaries();
   }
 
-  private calculateTotalSize() {
-    const { rowHeight, headerHeight } = this.options;
-    const summaryHeight = this.summaryRows.length * rowHeight;
-    this.totalHeight = this.rowOffsets[this.data.length] ?? (this.data.length * rowHeight);
-    this.totalWidth = this.columnPositions[this.columns.length] ?? 0;
-    
-    // Total height should include header and summary rows
-    return {
-      width: this.totalWidth,
-      height: this.totalHeight + headerHeight + summaryHeight
-    };
-  }
-
-  private getRowRange(y: number, height: number, rowspanOffset = 20) {
+  private getRowRange(rowspanOffset = 20) {
     const { headerHeight } = this.options;
     const summaryHeight = this.summaryRows.length * this.options.rowHeight;
     
@@ -231,9 +217,6 @@ export class CanvasRenderer {
     // 2. Draw Fixed Left Body
     this.drawFixedLeftBody();
     
-    // 3. Draw Header
-    this.drawHeader();
-    
     // 4. Draw Summary Rows (Fixed at bottom)
     this.drawSummaryRows();
   }
@@ -246,198 +229,14 @@ export class CanvasRenderer {
     return col.width || 100;
   }
 
-  private isColumnFixed(col: ColumnConfig): boolean {
-    if (col.fixed === 'left' || col.fixed === 'right' || col.fixed === true) return true;
-    if (col.children && col.children.length > 0) {
-      return col.children.some(child => this.isColumnFixed(child));
-    }
-    return false;
-  }
-
-  private drawHeader() {
-    const { headerHeight } = this.options;
-    const baseHeaderHeight = this.columnLevels > 1 ? 40 : headerHeight;
-    
-    this.ctx.save();
-    this.ctx.fillStyle = '#f5f7fa';
-    this.ctx.fillRect(0, 0, this.width, headerHeight);
-
-    const drawHeaderRecursively = (cols: ColumnConfig[], x: number, y: number, level: number, isFixedPass: boolean) => {
-      let currentX = x;
-      cols.forEach((col) => {
-        const w = this.getColumnWidth(col);
-        const isFixedCol = this.isColumnFixed(col);
-        
-        // Skip based on pass
-        if (isFixedPass !== isFixedCol) {
-          currentX += w;
-          return;
-        }
-
-        const isLeaf = !col.children || col.children.length === 0;
-        const h = isLeaf ? (this.columnLevels - level) * baseHeaderHeight : baseHeaderHeight;
-        const drawX = isFixedPass ? currentX : currentX - this.scrollX;
-        
-        // Only draw if within bounds or fixed
-        const shouldDraw = isFixedPass || (drawX + w > this.fixedLeftWidth && drawX < this.width);
-
-        if (shouldDraw) {
-          if (!isFixedPass) {
-            this.ctx.save();
-            this.ctx.beginPath();
-            this.ctx.rect(this.fixedLeftWidth, 0, this.width - this.fixedLeftWidth, headerHeight);
-            this.ctx.clip();
-          }
-
-          this.drawHeaderCell(col, drawX, w, h, y, isLeaf);
-
-          if (!isFixedPass) {
-            this.ctx.restore();
-          }
-        }
-
-        if (col.children && col.children.length > 0) {
-          drawHeaderRecursively(col.children, currentX, y + baseHeaderHeight, level + 1, isFixedPass);
-        }
-        
-        currentX += w;
-      });
-    };
-
-    // Draw scrolling headers first
-    drawHeaderRecursively(this.columns, 0, 0, 0, false);
-    // Draw fixed headers on top
-    drawHeaderRecursively(this.columns, 0, 0, 0, true);
-    
-    this.ctx.restore();
-  }
-
-  public setHoverHeader(index: number) {
-    if (this.hoverHeaderIndex !== index) {
-      this.hoverHeaderIndex = index;
-      this.render();
-    }
-  }
-
   public setSelectedRows(keys: (string | number)[]) {
     this.selectedRowKeys = new Set(keys);
     this.render();
   }
 
-  private drawHeaderCell(col: ColumnConfig, x: number, w: number, h: number, y: number, isLeaf: boolean) {
-    this.ctx.save();
-    
-    // Clip to cell bounds to prevent text overflow
-    this.ctx.beginPath();
-    this.ctx.rect(x, y, w, h);
-    this.ctx.clip();
-
-    // Cell background
-    this.ctx.fillStyle = '#f5f7fa';
-    this.ctx.fillRect(x, y, w, h);
-
-    if (this.options.border) {
-      this.ctx.strokeStyle = '#ebeef5';
-      this.ctx.lineWidth = 1;
-      this.ctx.strokeRect(x + 0.5, y + 0.5, w, h);
-    }
-
-    if ((col.type as any) === 'selection') {
-      const allSelected = this.data.length > 0 && this.selectedRowKeys.size === this.data.length;
-      this.drawCheckboxCell(allSelected, x, y, w, h, 'center');
-    } else {
-      // Use custom renderer if provided (Canvas fallback)
-      this.ctx.fillStyle = '#303133';
-      this.ctx.font = 'bold 14px sans-serif';
-      this.ctx.textBaseline = 'middle';
-      
-      const align = col.align || (isLeaf ? 'left' : 'center');
-      this.ctx.textAlign = align as any;
-      
-      let textX = x + 10;
-      if (align === 'center') textX = x + w / 2;
-      if (align === 'right') textX = x + w - 24;
-
-      const title = col.title || '';
-      this.ctx.fillText(title, textX, y + h / 2);
-
-      // Draw menu icon if leaf and hovered
-      if (isLeaf && col.type !== 'selection' && col.type !== 'expand') {
-        const idx = this.flattenedColumns.indexOf(col);
-        if (this.hoverHeaderIndex === idx) {
-          this.ctx.fillStyle = '#909399';
-          this.ctx.beginPath();
-          const iconX = x + w - 18;
-          const iconY = y + h / 2;
-          this.ctx.arc(iconX, iconY - 4, 1.5, 0, Math.PI * 2);
-          this.ctx.arc(iconX, iconY, 1.5, 0, Math.PI * 2);
-          this.ctx.arc(iconX, iconY + 4, 1.5, 0, Math.PI * 2);
-          this.ctx.fill();
-        }
-      }
-    }
-    this.ctx.restore();
-  }
-
-  public getHeaderAt(x: number, y: number): { column: ColumnConfig, rect: any, isMenu: boolean } | null {
-    const { headerHeight } = this.options;
-    if (y > headerHeight) return null;
-
-    const baseHeaderHeight = this.columnLevels > 1 ? 40 : headerHeight;
-
-    const findHeaderRecursively = (cols: ColumnConfig[], currentX: number, currentLevel: number, isFixedPass: boolean): any => {
-      let xOffset = currentX;
-      for (const col of cols) {
-        const isFixedCol = this.isColumnFixed(col);
-        
-        // Skip based on pass
-        if (isFixedPass !== isFixedCol) {
-          xOffset += this.getColumnWidth(col);
-          continue;
-        }
-
-        const w = this.getColumnWidth(col);
-        const isLeaf = !col.children || col.children.length === 0;
-        const h = isLeaf ? (this.columnLevels - currentLevel) * baseHeaderHeight : baseHeaderHeight;
-        const startY = currentLevel * baseHeaderHeight;
-
-        const drawX = isFixedPass ? xOffset : xOffset - this.scrollX;
-        
-        if (!isFixedPass && drawX < this.fixedLeftWidth) {
-          xOffset += w;
-          continue;
-        }
-
-        if (x >= drawX && x < drawX + w && y >= startY && y < startY + h) {
-          const isMenu = isLeaf && col.type !== 'selection' && col.type !== 'expand' && x >= drawX + w - 24;
-          return { 
-            column: col, 
-            rect: { x: drawX, y: startY, width: w, height: h }, 
-            isMenu 
-          };
-        }
-
-        if (col.children && col.children.length > 0) {
-          const result = findHeaderRecursively(col.children, xOffset, currentLevel + 1, isFixedPass);
-          if (result) return result;
-        }
-        
-        xOffset += w;
-      }
-      return null;
-    };
-
-    // Check fixed first
-    const fixedResult = findHeaderRecursively(this.columns, 0, 0, true);
-    if (fixedResult) return fixedResult;
-
-    // Then check scrolling
-    return findHeaderRecursively(this.columns, 0, 0, false);
-  }
-
   private drawBody() {
     const { headerHeight } = this.options;
-    const { startRow, endRow } = this.getRowRange(0, this.height);
+    const { startRow, endRow } = this.getRowRange();
     const summaryHeight = this.summaryRows.length * this.options.rowHeight;
 
     this.ctx.save();
@@ -484,7 +283,7 @@ export class CanvasRenderer {
           this.ctx.fillStyle = rowBgColor;
           this.ctx.fillRect(x, y, w, this.options.rowHeight);
           
-          this.drawCell(col, row[col.key || ''], x, y, w, this.options.rowHeight, i, j);
+          this.drawCell(col, row[col.key || ''], x, y, w, this.options.rowHeight, i);
           if (this.options.border) {
             this.ctx.strokeStyle = '#ebeef5';
             this.ctx.strokeRect(x + 0.5, y + 0.5, w, this.options.rowHeight);
@@ -493,30 +292,29 @@ export class CanvasRenderer {
       });
 
       // Draw expand content if expanded
+      // 优化：不在 Canvas 中绘制展开内容，由 Vue overlay 负责渲染
       if (this.expandedRowKeys.has(row.id)) {
         const expandY = y + this.options.rowHeight;
         const expandH = h - this.options.rowHeight;
         
-        // Draw expand area border/background
+        // 只绘制展开区域的背景和边框，不绘制内容
         this.ctx.fillStyle = '#fdfdfd';
-        this.ctx.fillRect(0, expandY, this.width, expandH);
+        this.ctx.fillRect(this.fixedLeftWidth, expandY, this.width - this.fixedLeftWidth, expandH);
         if (this.options.border) {
           this.ctx.strokeStyle = '#ebeef5';
           this.ctx.beginPath();
-          this.ctx.moveTo(0, expandY);
+          this.ctx.moveTo(this.fixedLeftWidth, expandY);
           this.ctx.lineTo(this.width, expandY);
           this.ctx.stroke();
         }
-        
-        this.drawExpandPlaceholder(row, this.fixedLeftWidth - this.scrollX, expandY, this.totalWidth - this.fixedLeftWidth, expandH);
       }
     }
 
     // Draw merged cells at the end to be on top
-    mergedCellsToDraw.forEach(({ col, val, x, y, w, h, r, c, bgColor }) => {
+    mergedCellsToDraw.forEach(({ col, val, x, y, w, h, r, bgColor }) => {
       this.ctx.fillStyle = bgColor;
       this.ctx.fillRect(x, y, w, h);
-      this.drawCell(col, val, x, y, w, h, r, c);
+      this.drawCell(col, val, x, y, w, h, r);
       if (this.options.border) {
         this.ctx.strokeStyle = '#ebeef5';
         this.ctx.strokeRect(x + 0.5, y + 0.5, w, h);
@@ -528,7 +326,7 @@ export class CanvasRenderer {
 
   private drawFixedLeftBody() {
     const { headerHeight } = this.options;
-    const { startRow, endRow } = this.getRowRange(0, this.height);
+    const { startRow, endRow } = this.getRowRange();
     const summaryHeight = this.summaryRows.length * this.options.rowHeight;
 
     this.ctx.save();
@@ -571,7 +369,7 @@ export class CanvasRenderer {
           this.ctx.fillStyle = rowBgColor;
           this.ctx.fillRect(x, y, w, this.options.rowHeight);
 
-          this.drawCell(col, row[col.key || ''], x, y, w, this.options.rowHeight, i, j);
+          this.drawCell(col, row[col.key || ''], x, y, w, this.options.rowHeight, i);
           if (this.options.border) {
             this.ctx.strokeStyle = '#ebeef5';
             this.ctx.strokeRect(x + 0.5, y + 0.5, w, this.options.rowHeight);
@@ -581,27 +379,16 @@ export class CanvasRenderer {
     }
 
     // Draw merged cells at the end to be on top
-    mergedCellsToDraw.forEach(({ col, val, x, y, w, h, r, c, bgColor }) => {
+    mergedCellsToDraw.forEach(({ col, val, x, y, w, h, r, bgColor }) => {
       this.ctx.fillStyle = bgColor;
       this.ctx.fillRect(x, y, w, h);
-      this.drawCell(col, val, x, y, w, h, r, c);
+      this.drawCell(col, val, x, y, w, h, r);
       if (this.options.border) {
         this.ctx.strokeStyle = '#ebeef5';
         this.ctx.strokeRect(x + 0.5, y + 0.5, w, h);
       }
     });
 
-    this.ctx.restore();
-  }
-
-  private drawExpandPlaceholder(row: TableRow, x: number, y: number, w: number, h: number) {
-    this.ctx.save();
-    this.ctx.fillStyle = '#fef0f0';
-    this.ctx.fillRect(x, y, w, h);
-    this.ctx.fillStyle = '#f56c6c';
-    this.ctx.font = 'italic 12px sans-serif';
-    this.ctx.textAlign = 'center';
-    this.ctx.fillText(`Expanded content for row ${row.id} (Rendered via h function in overlay)`, x + w / 2, y + h / 2);
     this.ctx.restore();
   }
 
@@ -686,7 +473,7 @@ export class CanvasRenderer {
     this.ctx.restore();
   }
 
-  private drawCell(col: ColumnConfig, value: any, x: number, y: number, w: number, h: number, rowIndex: number, colIndex: number) {
+  private drawCell(col: ColumnConfig, value: any, x: number, y: number, w: number, h: number, rowIndex: number) {
     this.ctx.save();
     this.ctx.beginPath();
     this.ctx.rect(x, y, w, h);
@@ -722,7 +509,7 @@ export class CanvasRenderer {
           this.drawColorPickerCell(value, x, y, w, h, col.align);
           break;
         case 'tags':
-          this.drawTagsCell(value, x, y, w, h, col.align);
+          this.drawTagsCell(value, x, y, w, h);
           break;
         case 'text':
         default:
@@ -874,7 +661,7 @@ export class CanvasRenderer {
     this.ctx.strokeRect(rectX + 0.5, rectY + 0.5, size, size);
   }
 
-  private drawTagsCell(value: any[], x: number, y: number, w: number, h: number, align?: string) {
+  private drawTagsCell(value: any[], x: number, y: number, w: number, h: number) {
     if (!Array.isArray(value)) return;
     let currentX = x + 5;
     const tagHeight = 20;
@@ -910,7 +697,7 @@ export class CanvasRenderer {
     const { headerHeight } = this.options;
     if (y < headerHeight) return null;
 
-    const { startRow, endRow } = this.getRowRange(0, this.height);
+    const { startRow, endRow } = this.getRowRange();
     for (let i = startRow; i < endRow; i++) {
       const row = this.data[i];
       if (!row) continue;
@@ -949,10 +736,6 @@ export class CanvasRenderer {
       }
     }
     return null;
-  }
-
-  private drawFixedElements() {
-    // TODO: Implement fixed columns and rows
   }
 
   public getRowOffsets() { return this.rowOffsets; }
